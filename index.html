@@ -1,1 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Messenger Bot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background: #f0f0f0;
+        }
+        .online {
+            background: #d4edda;
+        }
+        .offline {
+            background: #f8d7da;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+        }
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Messenger Bot</h1>
+    <div class="status offline" id="status">Status: Offline</div>
+    <div>
+        <input type="file" id="cookie-file" accept=".txt,.json">
+        <small>Select your cookie file (txt or json)</small>
+    </div>
+    <div>
+        <input type="text" id="prefix" value="!" placeholder="Command prefix">
+    </div>
+    <div>
+        <input type="text" id="admin-id" placeholder="Admin Facebook ID">
+    </div>
+    <button id="start-btn">Start Bot</button>
+    <button id="stop-btn" disabled>Stop Bot</button>
+    <div class="log" id="log-container"></div>
+    <script>
+        const socket = new WebSocket('ws:                            
+        const logContainer = document.getElementById('log-container');
+        const statusDiv = document.getElementById('status');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
 
+        function addLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        socket.onopen = () => addLog('Connected to bot server');
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'log') {
+                addLog(data.message);
+            } else if (data.type === 'status') {
+                statusDiv.className = data.running ? 'status online' : 'status offline';
+                statusDiv.textContent = `Status: ${data.running ? 'Online' : 'Offline'}`;
+                startBtn.disabled = data.running;
+                stopBtn.disabled = !data.running;
+            }
+        };
+        socket.onclose = () => addLog('Disconnected from bot server');
+
+        startBtn.addEventListener('click', () => {
+            const fileInput = document.getElementById('cookie-file');
+            if (fileInput.files.length === 0) {
+                addLog('Please select a cookie file');
+                return;
+            }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const cookieContent = event.target.result;
+                const prefix = document.getElementById('prefix').value.trim();
+                const adminId = document.getElementById('admin-id').value.trim();
+                socket.send(JSON.stringify({ type: 'start', cookieContent, prefix, adminId }));
+            };
+            reader.readAsText(file);
+        });
+
+        stopBtn.addEventListener('click', () => {
+            socket.send(JSON.stringify({ type: 'stop' }));
+        });
+
+        addLog('Control panel ready');
+    </script>
+</body>
+</html>
